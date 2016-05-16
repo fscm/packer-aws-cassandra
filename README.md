@@ -143,3 +143,20 @@ Details on the Cassandra ports can be found [here](https://docs.datastax.com/en/
 2. Commit your changes: `git commit -am 'Add some feature'`
 3. Push to the branch: `git push origin my-new-feature`
 4. Submit a pull request
+
+## Versioning
+
+This project uses [SemVer](http://semver.org/) for versioning. For the versions
+available, see the [tags on this repository](https://github.com/fscm/packer-templates/tags).
+
+## Authors
+
+* **Frederico Martins** - [fscm](https://github.com/fscm)
+
+See also the list of [contributors](https://github.com/fscm/packer-templates/contributors)
+who participated in this project.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/fscm/packer-templates/blob/master/LICENSE)
+file for details
