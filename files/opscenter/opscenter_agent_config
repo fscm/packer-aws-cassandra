@@ -1,0 +1,85 @@
+#!/bin/bash
+#
+# OpsCenter configuration script.
+#
+# version: 0.0.1
+# Date: 27/04/2016 - Frederico Martins (https://github.com/fscm)
+
+set -e
+
+BASEDIR=$(dirname $0)
+BASENAME=$(basename $0)
+
+show_usage() {
+  echo >&2 "Usage: ${BASENAME} [-d -e -S ] -s <OPSCENTER_ADDR>"
+  echo >&2 "Options:"
+
+  echo <&2 "  -d                      Disable starting service at boot."
+  echo <&2 "  -e                      Enable starting service at boot."
+  echo >&2 "  -s <OPSCENTER_ADDR>     The address of the opscenter server."
+  echo >&2 "  -S                      Start the service after configuring it."
+}
+
+OPSCENTER_AGENT_DISABLE=0
+OPSCENTER_AGENT_ENABLE=0
+OPSCENTER_AGENT_START=0
+OPSCENTER_ADDR=
+OPSCENTER_AGENT_YAML="/var/lib/datastax-agent/conf/address.yaml"
+
+__TS__=$(date +%s)
+
+while getopts ":deSs:" opt; do
+  case $opt in
+    s)
+      OPSCENTER_ADDR=${OPTARG}
+      ;;
+    d)
+      OPSCENTER_AGENT_DISABLE=1
+      ;;
+    e)
+      OPSCENTER_AGENT_ENABLE=1
+      ;;
+    S)
+      OPSCENTER_AGENT_START=1
+      ;;
+    \?)
+      echo >&2 "Invalid option: -${OPTARG}"
+      show_usage
+      exit 1
+      ;;
+    :)
+      echo >&2 "Option -${OPTARG} requires an argument"
+      show_usage
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "x${OPSCENTER_ADDR}" = "x" ]]; then
+  echo >&2 "OpsCenter server address is mandatory!"
+  show_usage
+  exit 1
+fi
+
+if [[ "${OPSCENTER_AGENT_ENABLE}" -gt 0 ]] && [[ "${OPSCENTER_AGENT_DISABLE}" -gt 0 ]]; then
+  echo >&2 "Enable (-e) and Disable (-d) options can not be used together."
+  exit 2
+fi
+
+if [[ -f ${OPSCENTER_AGENT_YAML} ]]; then
+  cp ${OPSCENTER_AGENT_YAML} ${OPSCENTER_AGENT_YAML}.${__TS__}.bck
+else
+  echo >&2 "OpsCenter agent configuration file not found. A new one will be created."
+fi
+
+(grep -q '^stomp_interface' ${OPSCENTER_AGENT_YAML} && sed -i -r -e "s/(stomp_interface: ).*/\1${OPSCENTER_ADDR}/" ${OPSCENTER_AGENT_YAML}) || echo "stomp_interface: ${OPSCENTER_ADDR}" >> ${OPSCENTER_AGENT_YAML}
+
+[[ "${OPSCENTER_AGENT_DISABLE}" -gt 0 ]] && systemctl disable datastax-agent.service
+[[ "${OPSCENTER_AGENT_ENABLE}" -gt 0 ]] && systemctl enable datastax-agent.service
+[[ "${OPSCENTER_AGENT_START}" -gt 0 ]] && systemctl start datastax-agent.service
+
+diff -q ${OPSCENTER_AGENT_YAML} ${OPSCENTER_AGENT_YAML}.${__TS__}.bck &> /dev/null && rm -f ${OPSCENTER_AGENT_YAML}.${__TS__}.bck || true
+
+echo "Configuration finished"
+
+exit 0

@@ -1,0 +1,81 @@
+{
+  "variables": {
+    "aws_access_key": "{{env `aws_access_key`}}",
+    "aws_secret_key": "{{env `aws_secret_key`}}",
+    "aws_region": "{{env `aws_region`}}",
+    "aws_base_ami": "{{env `aws_base_ami`}}",
+    "cassandra_version": "{{env `cassandra_version`}}",
+    "java_version": "{{env `java_version`}}",
+    "opscenter_version": "{{env `opscenter_version`}}"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "{{user `aws_region`}}",
+    "source_ami": "{{user `aws_base_ami`}}",
+    "instance_type": "t2.micro",
+    "ssh_username": "admin",
+    "associate_public_ip_address": true,
+    "ami_name": "cassandra-{{user `cassandra_version`}}_{{user `java_version`}}_oc.{{user `opscenter_version`}}-({{isotime \"20060102150405\"}})"
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Waiting 180 seconds for cloud-init to update /etc/apt/sources.list'",
+        "timeout 180 /bin/bash -c 'until stat /var/lib/cloud/instance/boot-finished &>/dev/null; do echo waiting...; sleep 10; done'"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "files/packages/oracle-java8-jre_{{user `java_version`}}_amd64.deb",
+      "destination": "/home/admin/oracle-java8-jre_{{user `java_version`}}_amd64.deb"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'deb http://debian.datastax.com/community stable main' | sudo tee /etc/apt/sources.list.d/datastax.list > /dev/null",
+        "wget -qO - http://debian.datastax.com/debian/repo_key | sudo apt-key add -",
+        "sudo apt-get update",
+        "sudo dpkg -i /home/admin/oracle-java8-jre_{{user `java_version`}}_amd64.deb",
+        "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q libjna-java libjna-jni",
+        "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q cassandra=$(apt-cache madison cassandra | awk '{print $3}' | grep '^{{user `cassandra_version`}}' | sort -n | tail -1)",
+        "sudo systemctl stop cassandra",
+        "sudo sleep 3",
+        "sudo systemctl disable cassandra",
+        "sudo rm -rf /var/lib/cassandra/{data,commitlog,saved_caches,hints}/*",
+        "sudo sed -i -e '/HeapDumpOnOutOfMemoryError/,+3 s/^#*/#/' -e '/MALLOC_ARENA_MAX/s/^#//g' /etc/cassandra/cassandra-env.sh",
+        "sudo sed -ri -e 's/(^endpoint_snitch: ).*/\\1Ec2Snitch/' /etc/cassandra/cassandra.yaml",
+        "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q datastax-agent=$(apt-cache madison datastax-agent | awk '{print $3}' | grep '^{{user `opscenter_version`}}' | sort -n | tail -1)",
+        "sudo systemctl stop datastax-agent",
+        "sudo systemctl disable datastax-agent",
+        "sudo sed -ri -e '/127.0.1.1/s/^/#/g' /etc/cloud/templates/hosts.debian.tmpl"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "files/cassandra/cassandra_config",
+      "destination": "/home/admin/cassandra_config"
+    },
+    {
+      "type": "file",
+      "source": "files/opscenter/opscenter_agent_config",
+      "destination": "/home/admin/opscenter_agent_config"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo mv /home/admin/cassandra_config /usr/local/bin/",
+        "sudo mv /home/admin/opscenter_agent_config /usr/local/bin/",
+        "sudo chown root:root /usr/local/bin/cassandra_config",
+        "sudo chown root:root /usr/local/bin/opscenter_agent_config",
+        "sudo chmod 0755 /usr/local/bin/cassandra_config",
+        "sudo chmod 0755 /usr/local/bin/opscenter_agent_config",
+        "sudo rm -rf /var/lib/cassandra/{data,commitlog,saved_caches,hints}/*",
+        "sudo rm -rf /var/log/cassandra/*",
+        "sudo sync"
+      ]
+    }
+  ]
+}
