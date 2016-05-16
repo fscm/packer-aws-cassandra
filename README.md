@@ -18,8 +18,8 @@ There are a couple of things needed for the script to work.
 
 Packer and AWS Command Line Interface tools need to be installed on your
 local computer.
-To build a base image you have to know the id of the latest Talkdesk Base AMI
-files for the region where you wish to build the AMI.
+To build a base image you have to know the id of the latest Debian AMI files
+for the region where you wish to build the AMI.
 
 #### Packer
 
@@ -47,9 +47,9 @@ Options:
   aws_secret_key         the aws secret key for your user.
   aws_region             the region where the ami will be created.
   aws_base_ami           the debian image id to use for the build.
-  cassandra_version   the cassandra version to install.
-  java_version        the java version used by cassandra (will be installed).
-  opscenter_version   the opscenter agent version to install.
+  cassandra_version      the cassandra version to install.
+  java_version           the java version used by cassandra (will be installed).
+  opscenter_version      the opscenter agent version to install.
 ```
 
 ### Instantiate a Server
