@@ -11,15 +11,15 @@ BASEDIR=$(dirname $0)
 BASENAME=$(basename $0)
 
 show_usage() {
-  echo >&2 "Usage: ${BASENAME} [-a -d -D -e -M <HEAP_NEWSIZE> -m <HEAP_MAXSIZE> -S (-s <SEED_ADDR>|...) -v <NUM_TOKENS>] -n <CLUSTER_NAME>"
+  echo >&2 "Usage: ${BASENAME} [-a -d -D <SECONDS> -e -M <HEAP_NEWSIZE> -m <HEAP_MAXSIZE> -S (-s <SEED_ADDR>|...) -v <NUM_TOKENS>] -n <CLUSTER_NAME>"
   echo >&2 "Options:"
 
   echo >&2 "  -a                      Enable auto bootstrap."
   echo <&2 "  -d                      Disable starting service at boot."
-  echo <&2 "  -D                      Delay the service startup by 120s (if -S is used)."
+  echo <&2 "  -D <SECONDS>            Delay the service startup by X seconds (if -S is used)."
   echo <&2 "  -e                      Enable starting service at boot."
-  echo >&2 "  -m <HEAP_MAXSIZE>       The amount of memory to be allocated to the head size (e.g.: 2G)."
-  echo >&2 "  -M <HEAP_NEWSIZE>       The amount of memory to be allocated to the head new size (e.g.: 200M)."
+  echo >&2 "  -m <HEAP_MAXSIZE>       The amount of memory to be allocated to the heap size (e.g.: 2G)."
+  echo >&2 "  -M <HEAP_NEWSIZE>       The amount of memory to be allocated to the heap new size (e.g.: 200M)."
   echo >&2 "  -n <CLUSTER_NAME>       The custer name."
   echo >&2 "  -R                      Change to the EC2MultiRegionSnitch."
   echo >&2 "  -s <SEED_ADDR>          The address of a seed server."
@@ -45,7 +45,7 @@ __LOCAL_IP_ADDR__=$(ip route get 1 | awk '{print $NF;exit}')
 __TMP_SEEDS__=()
 __TS__=$(date +%s)
 
-while getopts ":adDeM:m:n:RSs:v:" opt; do
+while getopts ":adD:eM:m:n:RSs:v:" opt; do
   case $opt in
     s)
       __TMP_SEEDS__+=("${OPTARG}")
@@ -78,7 +78,7 @@ while getopts ":adDeM:m:n:RSs:v:" opt; do
       CASSANDRA_START=1
       ;;
     D)
-      CASSANDRA_DELAY=120
+      CASSANDRA_DELAY=${OPTARG}
       ;;
     \?)
       echo >&2 "Invalid option: -${OPTARG}"
@@ -161,7 +161,7 @@ fi
 
 [[ "${CASSANDRA_DISABLE}" -gt 0 ]] && systemctl disable cassandra.service
 [[ "${CASSANDRA_ENABLE}" -gt 0 ]] && systemctl enable cassandra.service
-[[ "${CASSANDRA_START}" -gt 0 ]] && nohup sh -c 'echo "Cassandra will start in about ${0}s" ; sleep ${0} ; systemctl start cassandra.service' "${CASSANDRA_DELAY}" &> /dev/null &
+[[ "${CASSANDRA_START}" -gt 0 ]] && echo "Cassandra will start in about ${CASSANDRA_DELAY}s" && nohup sh -c "sleep ${CASSANDRA_DELAY} ; systemctl start cassandra.service" &> /dev/null &
 
 diff -q ${CASSANDRA_YAML} ${CASSANDRA_YAML}.${__TS__}.bck &> /dev/null && rm -f ${CASSANDRA_YAML}.${__TS__}.bck || true
 diff -q ${CASSANDRA_ENV} ${CASSANDRA_ENV}.${__TS__}.bck &> /dev/null && rm -f ${CASSANDRA_ENV}.${__TS__}.bck || true
