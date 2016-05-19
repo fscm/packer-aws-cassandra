@@ -45,7 +45,7 @@
         "sudo sleep 3",
         "sudo systemctl disable cassandra",
         "sudo rm -rf /var/lib/cassandra/{data,commitlog,saved_caches,hints}/*",
-        "sudo sed -i -e '/HeapDumpOnOutOfMemoryError/,+3 s/^#*/#/' -e '/MALLOC_ARENA_MAX/s/^#//g' /etc/cassandra/cassandra-env.sh",
+        "sudo sed -i -e '/HeapDumpOnOutOfMemoryError/ s/^#*/#/' -e '/x$CASSANDRA_HEAPDUMP_DIR/,+2 s/^#*/#/' -e '/MALLOC_ARENA_MAX/s/^#//g' /etc/cassandra/cassandra-env.sh",
         "sudo sed -ri -e 's/(^endpoint_snitch: ).*/\\1Ec2Snitch/' /etc/cassandra/cassandra.yaml",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q datastax-agent=$(apt-cache madison datastax-agent | awk '{print $3}' | grep '^{{user `opscenter_version`}}' | sort -n | tail -1)",
         "sudo systemctl stop datastax-agent",
