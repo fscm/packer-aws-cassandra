@@ -1,171 +1,206 @@
 #!/bin/bash
 #
-# Cassandra configuration script.
+# Shell script to configure some options of Cassandra.
 #
-# version: 0.0.1
-# Date: 27/04/2016 - Frederico Martins (https://github.com/fscm)
+# Copyright 2016, Frederico Martins
+#   Author: Frederico Martins <http://github.com/fscm>
+#
+# SPDX-License-Identifier: MIT
+#
+# This progam is free software. You can use it and/or modify it under the
+# terms of the MIT License.
+#
 
 set -e
 
 BASEDIR=$(dirname $0)
 BASENAME=$(basename $0)
+__TS__=$(date +%Y%m%d%H%M%S)
 
-show_usage() {
-  echo >&2 "Usage: ${BASENAME} [-a -d -D <SECONDS> -e -M <HEAP_NEWSIZE> -m <HEAP_MAXSIZE> -S (-s <SEED_ADDR>|...) -v <NUM_TOKENS>] -n <CLUSTER_NAME>"
-  echo >&2 "Options:"
+# Configuration files
+CASSANDRA_ENV="/srv/cassandra/conf/cassandra-env.sh"
+CASSANDRA_YAML="/srv/cassandra/conf/cassandra.yaml"
 
-  echo >&2 "  -a                      Enable auto bootstrap."
-  echo <&2 "  -d                      Disable starting service at boot."
-  echo <&2 "  -D <SECONDS>            Delay the service startup by X seconds (if -S is used)."
-  echo <&2 "  -e                      Enable starting service at boot."
-  echo >&2 "  -m <HEAP_MAXSIZE>       The amount of memory to be allocated to the heap size (e.g.: 2G)."
-  echo >&2 "  -M <HEAP_NEWSIZE>       The amount of memory to be allocated to the heap new size (e.g.: 200M)."
-  echo >&2 "  -n <CLUSTER_NAME>       The custer name."
-  echo >&2 "  -R                      Change to the EC2MultiRegionSnitch."
-  echo >&2 "  -s <SEED_ADDR>          The address of a seed server."
-  echo >&2 "  -S                      Start the service after configuring it."
-  echo >&2 "  -v <NUM_TOKENS>         The number of vnodes to use."
-}
+# Variables
+CASSANDRA_DISABLE=0
+CASSANDRA_ENABLE=0
+CASSANDRA_START=0
+CASSANDRA_WAIT=0
 
 CASSANDRA_BOOTSTRAP=0
 CASSANDRA_CLUSTER_NAME=
-CASSANDRA_HEAP_NEWSIZE=
 CASSANDRA_HEAP_MAXSIZE=
+CASSANDRA_HEAP_NEWSIZE=
+CASSANDRA_IP_ADDRESS=
 CASSANDRA_MULTIREGION=0
-CASSANDRA_DISABLE=0
-CASSANDRA_ENABLE=0
-CASSANDRA_TOKENS=
-CASSANDRA_DELAY=0
 CASSANDRA_SEEDS=
-CASSANDRA_START=0
-CASSANDRA_YAML="/etc/cassandra/cassandra.yaml"
-CASSANDRA_ENV="/etc/cassandra/cassandra-env.sh"
+CASSANDRA_TOKENS=
 
-__LOCAL_IP_ADDR__=$(ip route get 1 | awk '{print $NF;exit}')
 __TMP_SEEDS__=()
-__TS__=$(date +%s)
 
-while getopts ":adD:eM:m:n:RSs:v:" opt; do
+# Usage
+function show_usage() {
+  echo "Usage: ${BASENAME} [options]"
+  echo "  options:"
+  echo "    -a            Sets the auto_bootstrap option to 'on'."
+  echo "    -c <NAME>     Sets the cluster_name option to the value given (default"
+  echo "                  value is 'Cassandra Cluster')."
+  echo "    -D            Disables the Cassandra service from start at boot time."
+  echo "    -E            Enables the Cassandra service to start at boot time."
+  echo "    -i <ADDRESS>  Sets the cassandra listen address (default value is"
+  echo "                  '127.0.0.1')."
+  echo "    -m <MEMORY>   Sets Cassandra maximum heap size. Values should be provided"
+  echo "                  following the same Java heap nomenclature."
+  echo "    -n <MEMORY>   Sets Cassandra heap new size. Values should be provided"
+  echo "                  following the same Java heap nomenclature."
+  echo "    -r            Sets the endpoint_snitch option to 'EC2MultiRegionSnitch'"
+  echo "                  (default value is 'SimpleSnitch')."
+  echo "    -s <ADDRESS>  Sets the address of one seed node (or several seed nodes if"
+  echo "                  the addressess are separated with a comma)."
+  echo "    -S            Starts the Cassandra service after performing the required"
+  echo "                  configurations (if any given)."
+  echo "    -t <NUMBER>   Sets the number of tokens (default value is '4')."
+  echo "    -W <SECONDS>  Waits the specified amount of seconds before starting the"
+  echo "                  Cassandra service (default value is '0')."
+}
+
+# Options parsing
+while getopts ":ac:DEi:m:n:rs:St:W:" opt; do
   case $opt in
-    s)
-      __TMP_SEEDS__+=("${OPTARG}")
-      ;;
-    v)
-      CASSANDRA_TOKENS=${OPTARG}
-      ;;
     a)
       CASSANDRA_BOOTSTRAP=1
+      ;;
+    c)
+      CASSANDRA_CLUSTER_NAME=${OPTARG}
+      ;;
+    D)
+      CASSANDRA_DISABLE=1
+      ;;
+    E)
+      CASSANDRA_ENABLE=1
+      ;;
+    i)
+      CASSANDRA_IP_ADDRESS=${OPTARG}
       ;;
     m)
       CASSANDRA_HEAP_MAXSIZE=${OPTARG}
       ;;
-    M)
+    n)
       CASSANDRA_HEAP_NEWSIZE=${OPTARG}
       ;;
-    n)
-      CASSANDRA_CLUSTER_NAME=${OPTARG}
-      ;;
-    d)
-      CASSANDRA_DISABLE=1
-      ;;
-    e)
-      CASSANDRA_ENABLE=1
-      ;;
-    R)
+    r)
       CASSANDRA_MULTIREGION=1
+      ;;
+    s)
+      __TMP_SEEDS__+=("${OPTARG}")
       ;;
     S)
       CASSANDRA_START=1
       ;;
-    D)
-      CASSANDRA_DELAY=${OPTARG}
+    t)
+      CASSANDRA_TOKENS=${OPTARG}
+      ;;
+    W)
+      CASSANDRA_WAIT=${OPTARG}
       ;;
     \?)
-      echo >&2 "Invalid option: -${OPTARG}"
-      show_usage
+      echo >&2 "  [ERROR] Invalid option: -${OPTARG}"
       exit 1
       ;;
     :)
-      echo >&2 "Option -${OPTARG} requires an argument"
-      show_usage
+      echo >&2 "  [ERROR] Option -${OPTARG} requires an argument"
       exit 2
       ;;
   esac
 done
 
-if [[ "x${CASSANDRA_CLUSTER_NAME}" = "x" ]]; then
-  echo >&2 "Cluster name is mandatory!"
+# Check arguments
+if [[ $# -eq 0 ]]; then
   show_usage
-  exit 1
-fi
-
-if [[ "${CASSANDRA_ENABLE}" -gt 0 ]] && [[ "${CASSANDRA_DISABLE}" -gt 0 ]]; then
-  echo >&2 "Enable (-e) and Disable (-d) options can not be used together."
-  exit 2
-fi
-
-if ! [[ "${__LOCAL_IP_ADDR__}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-  echo >&2 "Unable to obtain the local ip address."
   exit 3
 fi
 
-if [[ -f ${CASSANDRA_YAML} ]]; then
-  cp ${CASSANDRA_YAML} ${CASSANDRA_YAML}.${__TS__}.bck
-else
-  echo >&2 "Cassandra configuration file not found."
+# Check permissions
+if [[ $EUID -ne 0 ]]; then
+  echo >&2 "  [ERROR] This script requires privileged access to system files"
   exit 4
 fi
 
-if [[ -f ${CASSANDRA_ENV} ]]; then
-  cp ${CASSANDRA_ENV} ${CASSANDRA_ENV}.${__TS__}.bck
-else
-  echo >&2 "Cassandra environment file not found."
+if [[ "${CASSANDRA_ENABLE}" -gt 0 ]] && [[ "${CASSANDRA_DISABLE}" -gt 0 ]]; then
+  echo >&2 "  [ERROR] Enable (-E) and Disable (-D) options can not be used together."
   exit 5
 fi
 
+# Backup configuration files
+if [[ -f ${CASSANDRA_ENV} ]]; then
+  cp ${CASSANDRA_ENV} ${CASSANDRA_ENV}.${__TS__}.bck
+fi
+if [[ -f ${CASSANDRA_YAML} ]]; then
+  cp ${CASSANDRA_YAML} ${CASSANDRA_YAML}.${__TS__}.bck
+fi
+
+# Configure memory settings
 if [[ "x${CASSANDRA_HEAP_MAXSIZE}" = "x" ]] && [[ "x${CASSANDRA_HEAP_NEWSIZE}" = "x" ]]; then
-  echo "Using default memory settings... Memory allocations will be calculated every Cassandra start."
+  #echo "  [INFO] Using default memory settings... Memory allocations will be calculated every time Cassandra starts."
 else
   if [[ "x${CASSANDRA_HEAP_MAXSIZE}" = "x" ]] || [[ "x${CASSANDRA_HEAP_NEWSIZE}" = "x" ]]; then
-    echo "Please set or unset Cassandra Max Heap Size (-m) and Cassandra New Heap Size in pair (-M)."
+    echo "  [ERROR] Set Cassandra Max Heap Size (-m) and Cassandra New Heap Size in pair (-n)."
     exit 6
   else
-    (grep -q '^HEAP_NEWSIZE' ${CASSANDRA_ENV} && sed -i -r -e "s/^(HEAP_NEWSIZE=).*/\1\"${CASSANDRA_HEAP_NEWSIZE}\"/" ${CASSANDRA_ENV}) \
-      || sed -i -e "/^#HEAP_NEWSIZE/aHEAP_NEWSIZE=\"${CASSANDRA_HEAP_NEWSIZE}\"" ${CASSANDRA_ENV}
-    (grep -q '^MAX_HEAP_SIZE' ${CASSANDRA_ENV} && sed -i -r -e "s/^(MAX_HEAP_SIZE=).*/\1\"${CASSANDRA_HEAP_MAXSIZE}\"/" ${CASSANDRA_ENV}) \
-      || sed -i -e "/^#HEAP_NEWSIZE/aMAX_HEAP_SIZE=\"${CASSANDRA_HEAP_MAXSIZE}\"" ${CASSANDRA_ENV}
+    sudo sed -i -r -e "s/#HEAP_NEWSIZE=/HEAP_NEWSIZE=/;/^HEAP_NEWSIZE=/s/=.*/=\"${CASSANDRA_HEAP_NEWSIZE}\"/" ${CASSANDRA_ENV}
+    sudo sed -i -r -e "s/#MAX_HEAP_SIZE=/MAX_HEAP_SIZE=/;/^MAX_HEAP_SIZE=/s/=.*/=\"${CASSANDRA_HEAP_MAXSIZE}\"/" ${CASSANDRA_ENV}
   fi
 fi
 
-sed -i -r -e "s/(cluster_name: ).*/\1'${CASSANDRA_CLUSTER_NAME}'/" ${CASSANDRA_YAML}
+# Configure cluster name
+if ! [[ "x${CASSANDRA_CLUSTER_NAME}" = "x" ]]; then
+  sed -i -r -e "/^cluster_name:/s/:.*/: '${CASSANDRA_CLUSTER_NAME}'/" ${CASSANDRA_YAML}
+fi
 
-sed -i -r -e "s/(listen_address: ).*/\1${__LOCAL_IP_ADDR__}/" ${CASSANDRA_YAML}
-sed -i -r -e "s/(rpc_address: ).*/\1${__LOCAL_IP_ADDR__}/" ${CASSANDRA_YAML}
+# Configure listen address
+if ! [[ "x${CASSANDRA_IP_ADDRESS}" = "x" ]]; then
+  sed -i -r -e "/^listen_address:/s/:.*/: ${CASSANDRA_IP_ADDRESS}/" ${CASSANDRA_YAML}
+  sed -i -r -e "/^broadcast_address:/s/:.*/: ${CASSANDRA_IP_ADDRESS}/" ${CASSANDRA_YAML}
+  sed -i -r -e "/^broadcast_rpc_address:/s/:.*/: ${CASSANDRA_IP_ADDRESS}/" ${CASSANDRA_YAML}
+fi
 
+# Configure bootstrap
 if [[ "${CASSANDRA_BOOTSTRAP}" -gt 0 ]]; then
-  (grep -q '^auto_bootstrap' ${CASSANDRA_YAML} && sed -i -r -e 's/(auto_bootstrap: ).*/\1true/' ${CASSANDRA_YAML}) || sed -i -e '/^cluster_name/aauto_bootstrap: true' ${CASSANDRA_YAML}
-else
-  sed -i -e '/auto_bootstrap/d' ${CASSANDRA_YAML} || true
+  sudo sed -i -r -e '/auto_bootstrap:/{h;s/#*auto_bootstrap:.*/auto_bootstrap: true/};${x;/^$/{s//\nauto_bootstrap: true/;H};x}' ${CASSANDRA_YAML}
 fi
 
+# Configure tokens
 if ! [[ "x${CASSANDRA_TOKENS}" = "x" ]]; then
-  sed -i -r -e "s/(num_tokens: ).*/\1${CASSANDRA_TOKENS}/" ${CASSANDRA_YAML}
+  sed -i -r -e "/^num_tokens:/s/:.*/: ${CASSANDRA_TOKENS}/" ${CASSANDRA_YAML}
 fi
 
+# Configure snitch to multi-region
+if [[ "${CASSANDRA_MULTIREGION}" -gt 0 ]]; then
+  sed -i -r -e "/^endpoint_snitch:/s/:.*/: EC2MultiRegionSnitch/" ${CASSANDRA_YAML}
+fi
+
+# Configure seeds
 if [[ ${#__TMP_SEEDS__[@]} -gt 0 ]]; then
   CASSANDRA_SEEDS="${__TMP_SEEDS__[@]}"
-  sed -i -r -e "s/(- seeds: ).*/\1\"${CASSANDRA_SEEDS// /,}\"/" ${CASSANDRA_YAML}
+  sed -i -r -e "/- seeds:/s/:.*/: \"${CASSANDRA_SEEDS// /,}\"/" ${CASSANDRA_YAML}
 fi
 
-[[ "${CASSANDRA_MULTIREGION}" -gt 0 ]] && sed -ri -e 's/(^endpoint_snitch: ).*/\\1EC2MultiRegionSnitch/' ${CASSANDRA_YAML}
-
-[[ "${CASSANDRA_DISABLE}" -gt 0 ]] && systemctl disable cassandra.service
+# Enable the service
 [[ "${CASSANDRA_ENABLE}" -gt 0 ]] && systemctl enable cassandra.service
-[[ "${CASSANDRA_START}" -gt 0 ]] && echo "Cassandra will start in about ${CASSANDRA_DELAY}s" && nohup sh -c "sleep ${CASSANDRA_DELAY} ; systemctl start cassandra.service" &> /dev/null &
 
-diff -q ${CASSANDRA_YAML} ${CASSANDRA_YAML}.${__TS__}.bck &> /dev/null && rm -f ${CASSANDRA_YAML}.${__TS__}.bck || true
+# Disable the service
+[[ "${CASSANDRA_DISABLE}" -gt 0 ]] && systemctl disable cassandra.service
+
+# Start the service
+if [[ "${CASSANDRA_START}" -gt 0 ]]; then
+  echo "  [INFO] Cassandra will start in ${CASSANDRA_WAIT} second(s)..."
+  nohup sh -c "sleep ${CASSANDRA_WAIT} ; systemctl start cassandra.service" &> /dev/null &
+fi
+
+# Clean up unneeded backups
 diff -q ${CASSANDRA_ENV} ${CASSANDRA_ENV}.${__TS__}.bck &> /dev/null && rm -f ${CASSANDRA_ENV}.${__TS__}.bck || true
+diff -q ${CASSANDRA_YAML} ${CASSANDRA_YAML}.${__TS__}.bck &> /dev/null && rm -f ${CASSANDRA_YAML}.${__TS__}.bck || true
 
-echo "Configuration finished"
-
+# All done
+echo "  [INFO] Configuration(s) successfully updated"
 exit 0
