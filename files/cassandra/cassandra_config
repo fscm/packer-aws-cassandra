@@ -2,7 +2,7 @@
 #
 # Shell script to configure some options of Cassandra.
 #
-# Copyright 2016, Frederico Martins
+# Copyright 2016-2017, Frederico Martins
 #   Author: Frederico Martins <http://github.com/fscm>
 #
 # SPDX-License-Identifier: MIT
