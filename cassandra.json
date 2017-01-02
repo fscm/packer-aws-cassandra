@@ -11,7 +11,8 @@
     "cassandra_version":    "{{env `cassandra_version`}}",
     "java_build_number":    "15",
     "java_major_version":   "8",
-    "java_update_version":  "112"
+    "java_update_version":  "112",
+    "system_locale":        "en_US"
   },
   "builders": [{
     "type":                        "amazon-ebs",
@@ -56,10 +57,8 @@
         "echo === System Packages ===",
         "echo 'deb http://ftp.debian.org/debian jessie-backports main contrib non-free' | sudo tee /etc/apt/sources.list.d/backports.list > /dev/null",
         "sudo apt-get update",
-        "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q install --no-install-recommends linux-headers-amd64 vim wget dbus unzip zip libyaml-0-2 curl",
-        "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q install --no-install-recommends -t jessie-backports virtualbox-guest-dkms virtualbox-guest-utils",
+        "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q install --no-install-recommends apt-transport-https apt-show-versions bash-completion logrotate ntp ntpdate htop vim wget curl dbus bmon nmon parted wget curl sudo rsyslog ethtool unzip zip telnet tcpdump strace tar libyaml-0-2 lsb-base lsb-release xfsprogs sysfsutils",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q install --no-install-recommends -t jessie-backports python python-minimal python-openssl python-crypto",
-        "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q purge dictionaries* emacs* iamerican* ibritish* ienglish* ispell nfacct tcpd vim-tiny xauth libxmuu1",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q --purge autoremove",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get autoclean",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get clean",
@@ -116,6 +115,9 @@
         "sudo cp /tmp/cassandra_config /usr/local/bin/",
         "sudo chown root:staff /usr/local/bin/cassandra_config",
         "sudo chmod 0755 /usr/local/bin/cassandra_config",
+        "echo === Extra System Settings ===",
+        "sudo sed -r -i -e 's/.*(GRUB_CMDLINE_LINUX_DEFAULT)=\"(.*)\"/\\1=\"\\2 elevator=deadline\"/' /etc/default/grub",
+        "sudo update-grub2",
         "echo === System Cleanup ===",
         "sudo rm -f /root/.bash_history",
         "sudo rm -f /home/{{user `aws_ssh_username`}}/.bash_history",
