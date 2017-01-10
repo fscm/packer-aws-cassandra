@@ -56,7 +56,7 @@
         "timeout 180 /bin/bash -c 'until stat /var/lib/cloud/instance/boot-finished &>/dev/null; do echo waiting...; sleep 6; done'",
         "echo === System Packages ===",
         "echo 'deb http://ftp.debian.org/debian jessie-backports main contrib non-free' | sudo tee /etc/apt/sources.list.d/backports.list > /dev/null",
-        "sudo apt-get update",
+        "sudo apt-get -qq update",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q install --no-install-recommends apt-transport-https apt-show-versions bash-completion logrotate ntp ntpdate htop vim wget curl dbus bmon nmon parted wget curl sudo rsyslog ethtool unzip zip telnet tcpdump strace tar libyaml-0-2 lsb-base lsb-release xfsprogs sysfsutils",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q install --no-install-recommends -t jessie-backports python python-minimal python-openssl python-crypto",
         "sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q --purge autoremove",
