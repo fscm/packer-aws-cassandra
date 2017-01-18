@@ -48,7 +48,7 @@ Usage:
     -var 'aws_secret_key=<AWS_SECRET_KEY>' \
     -var 'aws_region=<AWS_REGION>' \
     -var 'aws_base_ami=<BASE_IMAGE>' \
-    -var 'cassandra_version=<SPARK_VERSION>' \
+    -var 'cassandra_version=<CASSANDRA_VERSION>' \
     [-var 'option=value'] \
     cassandra.json
 ```
