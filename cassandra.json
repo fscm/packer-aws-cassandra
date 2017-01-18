@@ -8,6 +8,7 @@
     "aws_region":           "{{env `aws_region`}}",
     "aws_secret_key":       "{{env `aws_secret_key`}}",
     "aws_ssh_username":     "admin",
+    "cassandra_uid":        "2002",
     "cassandra_version":    "{{env `cassandra_version`}}",
     "java_build_number":    "15",
     "java_major_version":   "8",
