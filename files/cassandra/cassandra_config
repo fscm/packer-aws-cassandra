@@ -126,6 +126,7 @@ if [[ $EUID -ne 0 ]]; then
   exit 4
 fi
 
+# Check requirements
 if [[ "${CASSANDRA_ENABLE}" -gt 0 ]] && [[ "${CASSANDRA_DISABLE}" -gt 0 ]]; then
   echo >&2 "  [ERROR] Enable (-E) and Disable (-D) options can not be used together."
   exit 5
