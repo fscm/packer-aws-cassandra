@@ -21,6 +21,7 @@ WorkingDirectory=/srv/cassandra
 PermissionsStartOnly=true
 ExecStartPre=-/usr/bin/install -o cassandra -g cassandra -d /var/run/cassandra
 ExecStart=/srv/cassandra/bin/cassandra -p /var/run/cassandra/cassandra.pid
+SyslogIdentifier=cassandra
 StandardOutput=journal
 StandardError=journal
 LimitNOFILE=infinity
