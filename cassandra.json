@@ -71,6 +71,7 @@
         "sudo dpkg-reconfigure -f noninteractive dash",
         "sudo update-locale LC_CTYPE={{user `system_locale`}}.UTF-8",
         "sudo update-alternatives --set editor /usr/bin/vim.basic",
+        "sudo sed -i -r -e '/127.0.1.1/s/^#*/#/' /etc/cloud/templates/hosts.debian.tmpl",
         "echo === Sysctl ===",
         "sudo cp /tmp/50-cassandra.conf /etc/sysctl.d/",
         "sudo chown root:root /etc/sysctl.d/50-cassandra.conf",
