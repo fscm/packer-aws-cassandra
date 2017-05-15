@@ -16,6 +16,7 @@
     "java_build_number":    "15",
     "java_major_version":   "8",
     "java_update_version":  "112",
+    "os_short_arch":        "x64",
     "system_locale":        "en_US"
   },
   "builders": [{
