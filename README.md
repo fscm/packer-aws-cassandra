@@ -63,9 +63,10 @@ Usage:
 - `aws_region` - *[required]* The regions were the build will be performed.
 - `aws_secret_key` - *[required]* The AWS secret key.
 - `cassandra_version` - *[required]* Cassandra version.
-- `java_build_number` - Java build number (default value: "15").
+- `java_build_number` - Java build number (default value: "11").
 - `java_major_version` - Java major version (default value: "8").
-- `java_update_version` - Java update version (default value: "112").
+- `java_token` - Java link token (default version: "d54c1d3a095b4ff2b6607d096fa80163").
+- `java_update_version` - Java update version (default value: "131").
 - `system_locale` - Locale for the system (default value: "en_US").
 
 ### Instantiate a Cluster
