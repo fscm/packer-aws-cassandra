@@ -142,7 +142,7 @@ fi
 
 # Configure memory settings
 if [[ "x${CASSANDRA_HEAP_MAXSIZE}" = "x" ]] && [[ "x${CASSANDRA_HEAP_NEWSIZE}" = "x" ]]; then
-  #echo "  [INFO] Using default memory settings... Memory allocations will be calculated every time Cassandra starts."
+  echo "  [INFO] Using default memory settings... Memory allocations will be calculated every time Cassandra starts."
 else
   if [[ "x${CASSANDRA_HEAP_MAXSIZE}" = "x" ]] || [[ "x${CASSANDRA_HEAP_NEWSIZE}" = "x" ]]; then
     echo "  [ERROR] Set Cassandra Max Heap Size (-m) and Cassandra New Heap Size in pair (-n)."
